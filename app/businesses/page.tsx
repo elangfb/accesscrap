@@ -30,6 +30,9 @@ function List() {
   const [status, setStatus] = useState<ContactStatus | "all">("all");
   const [provinsi, setProvinsi] = useState<string>("all");
   const [kategori, setKategori] = useState<string>("all");
+  const [contact, setContact] = useState<
+    "all" | "has_wa" | "wa_email" | "wa_only" | "email_only"
+  >("all");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Business | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -56,6 +59,14 @@ function List() {
       if (status !== "all" && b.status !== status) return false;
       if (provinsi !== "all" && b.provinsi !== provinsi) return false;
       if (kategori !== "all" && b.kategori !== kategori) return false;
+      if (contact !== "all") {
+        const hasWa = waLink(b.telepon) !== "";
+        const hasEmail = b.email.trim() !== "";
+        if (contact === "has_wa" && !hasWa) return false;
+        if (contact === "wa_email" && !(hasWa && hasEmail)) return false;
+        if (contact === "wa_only" && !(hasWa && !hasEmail)) return false;
+        if (contact === "email_only" && !(hasEmail && !hasWa)) return false;
+      }
       if (s) {
         const hay = (
           b.nama +
@@ -70,7 +81,7 @@ function List() {
       }
       return true;
     });
-  }, [items, search, status, provinsi, kategori]);
+  }, [items, search, status, provinsi, kategori, contact]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pageCount - 1);
@@ -151,7 +162,7 @@ function List() {
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <input
           placeholder="Search name, address, phone…"
           value={search}
@@ -205,6 +216,20 @@ function List() {
               {c}
             </option>
           ))}
+        </select>
+        <select
+          value={contact}
+          onChange={(e) => {
+            setContact(e.target.value as typeof contact);
+            resetPage();
+          }}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+        >
+          <option value="all">All contacts</option>
+          <option value="has_wa">Has WhatsApp</option>
+          <option value="wa_email">WhatsApp + Email</option>
+          <option value="wa_only">WhatsApp only</option>
+          <option value="email_only">Email only</option>
         </select>
       </div>
 
