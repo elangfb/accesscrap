@@ -1,5 +1,6 @@
 export type ContactStatus =
   | "not_contacted"
+  | "cant_be_contacted"
   | "contacted"
   | "responded"
   | "not_interested"
@@ -41,6 +42,11 @@ export const STATUS_META: Record<
     color: "text-slate-600",
     badge: "bg-slate-100 text-slate-700 border-slate-200",
   },
+  cant_be_contacted: {
+    label: "Can't be contacted",
+    color: "text-stone-600",
+    badge: "bg-stone-100 text-stone-700 border-stone-200",
+  },
   contacted: {
     label: "Contacted",
     color: "text-blue-600",
@@ -75,4 +81,5 @@ export const STATUS_ORDER: ContactStatus[] = [
   "follow_up",
   "converted",
   "not_interested",
+  "cant_be_contacted",
 ];

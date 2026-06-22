@@ -29,14 +29,20 @@ function Dashboard() {
   }, [items]);
 
   const total = items.length;
-  const contacted =
-    total - (counts.not_contacted ?? 0);
-  const pct = total > 0 ? Math.round((contacted / total) * 100) : 0;
+  const cantBeContacted = counts.cant_be_contacted ?? 0;
+  // "Contacted" = reached in some way; excludes both not-yet-contacted and
+  // those we determined can't be contacted at all.
+  const contacted = total - (counts.not_contacted ?? 0) - cantBeContacted;
+  // Progress is measured against reachable businesses, so unreachable ones
+  // don't permanently cap the percentage below 100%.
+  const contactable = total - cantBeContacted;
+  const pct = contactable > 0 ? Math.round((contacted / contactable) * 100) : 0;
 
   const byProvince = useMemo(() => {
     const map = new Map<string, number>();
     for (const b of items) {
-      if (b.status === "not_contacted") continue;
+      if (b.status === "not_contacted" || b.status === "cant_be_contacted")
+        continue;
       map.set(b.provinsi, (map.get(b.provinsi) ?? 0) + 1);
     }
     return Array.from(map.entries())
@@ -85,9 +91,13 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Total businesses" value={total.toLocaleString()} />
             <StatCard label="Contacted" value={contacted.toLocaleString()} />
+            <StatCard
+              label="Can't be contacted"
+              value={cantBeContacted.toLocaleString()}
+            />
             <StatCard label="Progress" value={`${pct}%`} />
           </div>
 
@@ -169,6 +179,8 @@ function barColor(s: ContactStatus): string {
   switch (s) {
     case "not_contacted":
       return "bg-slate-300";
+    case "cant_be_contacted":
+      return "bg-stone-400";
     case "contacted":
       return "bg-blue-400";
     case "responded":
