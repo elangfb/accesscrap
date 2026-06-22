@@ -7,6 +7,8 @@ interface RawRow {
   "Nama Usaha"?: string;
   "Alamat Usaha"?: string;
   "Nomor Telepon"?: string;
+  Email?: string;
+  Website?: string;
   [key: string]: string | undefined;
 }
 
@@ -16,6 +18,8 @@ export interface ParsedBusiness {
   nama: string;
   alamat: string;
   telepon: string;
+  email: string;
+  website: string;
 }
 
 // Normalize a field for dedupe comparison: lowercase, trim, collapse
@@ -47,6 +51,8 @@ export function parseCsv(file: File): Promise<ParsedBusiness[]> {
             nama: (r["Nama Usaha"] ?? "").trim(),
             alamat: (r["Alamat Usaha"] ?? "").trim(),
             telepon: (r["Nomor Telepon"] ?? "").trim(),
+            email: (r.Email ?? "").trim(),
+            website: (r.Website ?? "").trim(),
           }))
           .filter((r) => r.nama.length > 0);
         resolve(rows);
@@ -67,6 +73,8 @@ export function makeBusiness(
     nama: parsed.nama,
     alamat: parsed.alamat,
     telepon: parsed.telepon,
+    email: parsed.email,
+    website: parsed.website,
     status: "not_contacted" as ContactStatus,
     notes: "",
     lastContactedAt: null,

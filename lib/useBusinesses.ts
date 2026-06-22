@@ -20,7 +20,9 @@ export function useBusinesses() {
       (snap) => {
         const rows: Business[] = snap.docs.map((d) => {
           const data = d.data() as Omit<Business, "id">;
-          return { id: d.id, ...data };
+          // email/website were added later; default them so docs imported
+          // before this change still satisfy the Business type.
+          return { ...data, id: d.id, email: data.email ?? "", website: data.website ?? "" };
         });
         setItems(rows);
         setLoading(false);

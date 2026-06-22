@@ -13,6 +13,8 @@ export interface Business {
   nama: string;
   alamat: string;
   telepon: string;
+  email: string;
+  website: string;
   status: ContactStatus;
   notes: string;
   lastContactedAt: number | null;

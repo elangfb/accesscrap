@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useBusinessActions } from "@/lib/business";
+import { waLink } from "@/lib/wa";
 import {
   STATUS_META,
   STATUS_ORDER,
@@ -106,7 +107,60 @@ export function BusinessDetail({
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <Field label="Province" value={business.provinsi} />
-            <Field label="Phone" value={business.telepon || "—"} />
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Phone
+              </div>
+              <div className="mt-0.5 text-slate-800">
+                {business.telepon || "—"}
+              </div>
+              {waLink(business.telepon) && (
+                <a
+                  href={waLink(business.telepon)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                >
+                  <span aria-hidden>💬</span> Chat on WhatsApp
+                </a>
+              )}
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Email
+              </div>
+              <div className="mt-0.5 text-slate-800">
+                {business.email ? (
+                  <a
+                    href={`mailto:${business.email}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {business.email}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Website
+              </div>
+              <div className="mt-0.5 truncate text-slate-800">
+                {business.website ? (
+                  <a
+                    href={normalizeUrl(business.website)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {business.website}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <Field label="Address" value={business.alamat || "—"} />
             </div>
@@ -201,6 +255,12 @@ export function BusinessDetail({
       </div>
     </div>
   );
+}
+
+// Source data often stores bare hosts ("www.example.com"); add a scheme so the
+// link resolves instead of being treated as a relative path.
+function normalizeUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
 function Field({ label, value }: { label: string; value: string }) {

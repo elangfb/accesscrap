@@ -36,16 +36,32 @@ function UploadForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Load every existing dedupeKey in one round trip. The web SDK does not
-  // support field projection, so full docs are returned; at this app's scale
-  // (thousands of businesses) one request is far cheaper than hundreds of
-  // `in` queries (capped at 30 values each).
-  async function fetchExistingKeys(): Promise<Set<string>> {
+  // Load every existing business keyed by dedupeKey in one round trip. The web
+  // SDK does not support field projection, so full docs are returned; at this
+  // app's scale (thousands of businesses) one request is far cheaper than
+  // hundreds of `in` queries (capped at 30 values each). We keep the doc id and
+  // current email/website so a re-import can backfill those fields.
+  async function fetchExisting(): Promise<
+    Map<string, { id: string; email: string; website: string }>
+  > {
     const snap = await getDocs(collection(db, "businesses"));
-    const present = new Set<string>();
+    const present = new Map<
+      string,
+      { id: string; email: string; website: string }
+    >();
     snap.forEach((d) => {
-      const key = (d.data() as { dedupeKey?: string }).dedupeKey;
-      if (key) present.add(key);
+      const data = d.data() as {
+        dedupeKey?: string;
+        email?: string;
+        website?: string;
+      };
+      if (data.dedupeKey) {
+        present.set(data.dedupeKey, {
+          id: d.id,
+          email: data.email ?? "",
+          website: data.website ?? "",
+        });
+      }
     });
     return present;
   }
@@ -78,15 +94,42 @@ function UploadForm() {
         candidates.push({ row, key });
       }
 
-      // Fetch keys already present in Firestore and skip them.
-      const existing = await fetchExistingKeys();
-      const toImport = candidates.filter((c) => !existing.has(c.key));
-      const skippedExisting = candidates.length - toImport.length;
+      // Compare against what's already in Firestore. New keys are inserted;
+      // existing keys whose email/website is missing get backfilled from this
+      // file (preserving status/notes/etc.); fully-populated rows are skipped.
+      const existing = await fetchExisting();
+      const col = collection(db, "businesses");
+
+      type Op =
+        | { type: "insert"; row: ParsedBusiness }
+        | { type: "update"; id: string; data: Record<string, string | number> };
+      const ops: Op[] = [];
+      let skippedExisting = 0;
+
+      for (const { row, key } of candidates) {
+        const ex = existing.get(key);
+        if (!ex) {
+          ops.push({ type: "insert", row });
+          continue;
+        }
+        const patch: Record<string, string | number> = {};
+        if (row.email && !ex.email) patch.email = row.email;
+        if (row.website && !ex.website) patch.website = row.website;
+        if (Object.keys(patch).length > 0) {
+          patch.updatedAt = Date.now();
+          ops.push({ type: "update", id: ex.id, data: patch });
+        } else {
+          skippedExisting++;
+        }
+      }
+
+      const inserts = ops.filter((o) => o.type === "insert").length;
+      const updates = ops.length - inserts;
       const totalSkipped = inFileDupes + skippedExisting;
 
-      if (toImport.length === 0) {
+      if (ops.length === 0) {
         setMessage(
-          `No new businesses to import. Skipped ${totalSkipped} duplicate(s) in "${file.name}".`
+          `Nothing to do. Skipped ${totalSkipped} duplicate(s) in "${file.name}" (already present with contact info).`
         );
         setProgress({ done: 0, total: 0 });
         setFile(null);
@@ -94,23 +137,25 @@ function UploadForm() {
         return;
       }
 
-      const col = collection(db, "businesses");
       let done = 0;
-      for (let i = 0; i < toImport.length; i += BATCH_SIZE) {
+      for (let i = 0; i < ops.length; i += BATCH_SIZE) {
         const batch = writeBatch(db);
-        const slice = toImport.slice(i, i + BATCH_SIZE);
-        for (const { row } of slice) {
-          const ref = doc(col);
-          batch.set(ref, makeBusiness(row, file.name));
+        const slice = ops.slice(i, i + BATCH_SIZE);
+        for (const op of slice) {
+          if (op.type === "insert") {
+            batch.set(doc(col), makeBusiness(op.row, file.name));
+          } else {
+            batch.update(doc(col, op.id), op.data);
+          }
         }
         await batch.commit();
         done += slice.length;
-        setProgress({ done, total: toImport.length });
+        setProgress({ done, total: ops.length });
       }
       setMessage(
-        `Imported ${toImport.length} new business(es) from "${file.name}".` +
+        `"${file.name}": imported ${inserts} new, backfilled email/website on ${updates} existing.` +
           (totalSkipped > 0
-            ? ` Skipped ${totalSkipped} duplicate(s) (${inFileDupes} within file, ${skippedExisting} already in database).`
+            ? ` Skipped ${totalSkipped} (${inFileDupes} dupes within file, ${skippedExisting} already complete).`
             : "")
       );
       setFile(null);
@@ -133,12 +178,15 @@ function UploadForm() {
       <p className="mt-1 text-sm text-slate-500">
         Import a business directory CSV. Expected columns:{" "}
         <code className="rounded bg-slate-100 px-1 text-xs">
-          Provinsi, Kategori, Nama Usaha, Alamat Usaha, Nomor Telepon
+          Provinsi, Kategori, Nama Usaha, Alamat Usaha, Nomor Telepon, Email,
+          Website
         </code>
         .
       </p>
       <p className="mt-2 text-sm text-slate-500">
-        Duplicates are detected by name + address and skipped automatically.
+        Duplicates are detected by name + address. Re-importing an updated file
+        backfills email/website onto existing businesses without touching their
+        status or notes.
       </p>
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">

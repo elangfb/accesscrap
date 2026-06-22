@@ -11,6 +11,7 @@ import {
 } from "@/lib/types";
 import { Guard } from "@/components/Guard";
 import { BusinessDetail } from "@/components/BusinessDetail";
+import { waLink } from "@/lib/wa";
 
 const PAGE_SIZE = 50;
 
@@ -55,7 +56,15 @@ function List() {
       if (provinsi !== "all" && b.provinsi !== provinsi) return false;
       if (kategori !== "all" && b.kategori !== kategori) return false;
       if (s) {
-        const hay = (b.nama + " " + b.alamat + " " + b.telepon).toLowerCase();
+        const hay = (
+          b.nama +
+          " " +
+          b.alamat +
+          " " +
+          b.telepon +
+          " " +
+          b.email
+        ).toLowerCase();
         if (!hay.includes(s)) return false;
       }
       return true;
@@ -204,7 +213,7 @@ function List() {
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <th className="px-4 py-3">Business</th>
               <th className="px-4 py-3">Province</th>
-              <th className="px-4 py-3">Phone</th>
+              <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
@@ -235,7 +244,23 @@ function List() {
                 </td>
                 <td className="px-4 py-3 text-slate-600">{b.provinsi}</td>
                 <td className="px-4 py-3 text-slate-600">
-                  {b.telepon || "—"}
+                  {waLink(b.telepon) ? (
+                    <a
+                      href={waLink(b.telepon)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 font-medium text-emerald-600 hover:underline"
+                    >
+                      <span aria-hidden>💬</span>
+                      {b.telepon}
+                    </a>
+                  ) : (
+                    <div>{b.telepon || "—"}</div>
+                  )}
+                  {b.email && (
+                    <div className="text-xs text-blue-600">{b.email}</div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span
