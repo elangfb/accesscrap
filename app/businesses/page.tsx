@@ -11,6 +11,7 @@ import {
 } from "@/lib/types";
 import { Guard } from "@/components/Guard";
 import { BusinessDetail } from "@/components/BusinessDetail";
+import { StatusSelect } from "@/components/StatusSelect";
 import { waLink } from "@/lib/wa";
 
 const PAGE_SIZE = 50;
@@ -263,14 +264,7 @@ function List() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={
-                      "inline-block rounded-full border px-2 py-0.5 text-xs font-medium " +
-                      STATUS_META[b.status].badge
-                    }
-                  >
-                    {STATUS_META[b.status].label}
-                  </span>
+                  <StatusSelect business={b} />
                 </td>
               </tr>
             ))}
